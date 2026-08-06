@@ -3,7 +3,7 @@
    ============================================ */
 
 // ---- WhatsApp number (digits only, with country code, no + or spaces) ----
-const WHATSAPP_NUMBER = "447823590526";
+const WHATSAPP_NUMBER = "918851875685";
 
 // ---- Footer year ----
 document.getElementById("year").textContent = new Date().getFullYear();
