@@ -26,18 +26,66 @@ script.js    — nav, 3D tilt, form validation, WhatsApp handoff
 
 ## How the enquiry form works
 
-This is a **static site with no server**, so it can't silently deliver form
-submissions to WhatsApp in the background — WhatsApp doesn't offer that from
-a browser without a backend and the WhatsApp Business API. Instead, the form:
+The form does two things on submit:
 
-1. Validates name, phone, and message client-side (with inline errors).
-2. On successful submit, builds a pre-filled WhatsApp message and opens
-   `wa.me` in a new tab, so the visitor just taps **Send**.
+1. **Saves the enquiry to Supabase** (a hosted Postgres database) — so every
+   lead is on record even if the visitor never taps Send in WhatsApp.
+2. **Opens a pre-filled WhatsApp chat** to your number — so you still get
+   pinged for a fast reply.
 
-If you later want submissions to land automatically without the visitor
-tapping send (e.g. straight into an inbox or CRM), you'd need a small backend
-or a form service (Formspree, Web3Forms, etc.) plus the WhatsApp Business
-API — that's outside "frontend only."
+It still can't send silently straight into WhatsApp itself — no browser-only
+site can do that without the paid WhatsApp Business API — but nothing is
+lost anymore even if step 2 is skipped, because step 1 already saved it.
+
+### Set up Supabase (one-time)
+
+1. Go to [supabase.com](https://supabase.com), sign in, and click
+   **New project**. Pick any name/region and a database password (save it
+   somewhere safe — you won't need it for this integration, but keep it).
+2. Once the project is ready, open the **SQL Editor** (left sidebar) and
+   run this to create the enquiries table:
+
+   ```sql
+   create table enquiries (
+     id bigint generated always as identity primary key,
+     full_name text not null,
+     phone text not null,
+     occasion text,
+     message text not null,
+     created_at timestamptz not null default now()
+   );
+
+   -- Lock the table down: the public "anon" key can only INSERT,
+   -- never read, update, or delete other people's enquiries.
+   alter table enquiries enable row level security;
+
+   create policy "Anyone can submit an enquiry"
+     on enquiries for insert
+     to anon
+     with check (true);
+   ```
+
+3. Go to **Project Settings → API**. Copy two values:
+   - **Project URL** (looks like `https://xxxxxxxx.supabase.co`)
+   - **anon public** key (a long token — this one is safe to use in
+     frontend code; it can only insert, thanks to the policy above)
+4. Paste both into `script.js`, near the top:
+   ```js
+   const SUPABASE_URL = "https://xxxxxxxx.supabase.co";
+   const SUPABASE_ANON_KEY = "eyJhbGciOi...";
+   ```
+5. Commit and push — Cloudflare Pages redeploys automatically, and new
+   enquiries will start appearing in **Table Editor → enquiries** in Supabase.
+
+If you leave the placeholders in place, the site quietly skips the database
+save and just does the WhatsApp handoff like before — nothing breaks.
+
+### Viewing your leads
+
+Supabase's **Table Editor** works fine for occasional checking. If you want
+something nicer later, you can build a small internal dashboard, or connect
+a tool like Retool, or export to a spreadsheet from the Table Editor's
+"Export" button — none of that is required for the site to keep working.
 
 ## Deploy: GitHub → Cloudflare Pages
 

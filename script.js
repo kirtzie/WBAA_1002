@@ -3,7 +3,25 @@
    ============================================ */
 
 // ---- WhatsApp number (digits only, with country code, no + or spaces) ----
-const WHATSAPP_NUMBER = "918851875685";
+const WHATSAPP_NUMBER = "447823590526";
+
+// ---- Supabase config ----
+// Fill these in from your Supabase project: Settings -> API
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // the "anon public" key, safe for browser use
+
+let supabaseClient = null;
+if (
+  window.supabase &&
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY &&
+  !SUPABASE_URL.includes("YOUR_SUPABASE") &&
+  !SUPABASE_ANON_KEY.includes("YOUR_SUPABASE")
+) {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  console.warn("Supabase not configured — enquiries will only go via WhatsApp, not saved to a database. Fill in SUPABASE_URL and SUPABASE_ANON_KEY in script.js.");
+}
 
 // ---- Footer year ----
 document.getElementById("year").textContent = new Date().getFullYear();
@@ -157,7 +175,9 @@ Object.keys(fields).forEach((key) => {
   });
 });
 
-form.addEventListener("submit", (e) => {
+const submitBtn = form.querySelector(".form__submit");
+
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const results = Object.keys(fields).map((key) => validateField(key));
@@ -174,22 +194,40 @@ form.addEventListener("submit", (e) => {
   const occasion = document.getElementById("occasion").value;
   const message = fields.message.input.value.trim();
 
-  const waMessage =
-    `New enquiry from vastra site%0A` +
-    `Name: ${name}%0A` +
-    `Phone: ${phone}%0A` +
-    `Occasion: ${occasion}%0A` +
-    `Message: ${message}`;
-
   const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
     `New enquiry from VASTRA site\nName: ${name}\nPhone: ${phone}\nOccasion: ${occasion}\nMessage: ${message}`
   )}`;
+
+  submitBtn.disabled = true;
+  formNote.style.color = "";
+  formNote.textContent = "Sending...";
+
+  // Save to Supabase first (if configured), so the enquiry is never lost
+  // even if the visitor closes the tab instead of tapping Send in WhatsApp.
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient.from("enquiries").insert([
+        {
+          full_name: name,
+          phone: phone,
+          occasion: occasion,
+          message: message,
+        },
+      ]);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Supabase insert failed:", err);
+      formNote.style.color = "#E08A8A";
+      formNote.textContent = "Couldn't save to our records, but continuing to WhatsApp...";
+    }
+  }
 
   formNote.style.color = "";
   formNote.textContent = "Opening WhatsApp — send the message to reach us.";
 
   window.open(waUrl, "_blank", "noopener");
 
+  submitBtn.disabled = false;
   form.reset();
   Object.values(fields).forEach((f) => {
     f.error.textContent = "";
