@@ -7,8 +7,8 @@ const WHATSAPP_NUMBER = "447823590526";
 
 // ---- Supabase config ----
 // Fill these in from your Supabase project: Settings -> API
-const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxxxxx.supabase.co
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // the "anon public" key, safe for browser use
+const SUPABASE_URL = "https://wxjeaqczctoyflwdxime.supabase.co"; // e.g. https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = "sb_publishable_ewMHUtcn6zBRc2QW-rzleQ_SaT0_LI_"; // the "anon public" key, safe for browser use
 
 let supabaseClient = null;
 if (
