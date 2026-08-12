@@ -273,6 +273,7 @@
           <span class="form__error" id="err-loginPassword"></span>
         </div>
         <button type="submit" class="btn btn--gold btn--wide">Log In</button>
+        <button type="button" class="modal__link" id="forgotPasswordLink">Forgot password?</button>
       </form>
 
       <form class="authform" id="signupForm" hidden novalidate>
@@ -295,6 +296,41 @@
       </form>
 
       <p class="modal__note" id="authNote" role="status" aria-live="polite"></p>
+    </div>
+
+    <!-- Forgot password: request reset email -->
+    <div id="forgotView" hidden>
+      <h3 class="modal__title">Reset your password</h3>
+      <p class="modal__sub">Enter your account email and we'll send you a link to set a new password.</p>
+      <form class="authform" id="forgotForm" novalidate>
+        <div class="form__row">
+          <label for="forgotEmail">Email</label>
+          <input type="email" id="forgotEmail" name="email" placeholder="you@example.com" autocomplete="email">
+          <span class="form__error" id="err-forgotEmail"></span>
+        </div>
+        <button type="submit" class="btn btn--gold btn--wide">Send Reset Link</button>
+        <button type="button" class="modal__link" id="backToLoginLink">Back to Log In</button>
+      </form>
+      <p class="modal__note" id="forgotNote" role="status" aria-live="polite"></p>
+    </div>
+
+    <!-- Reset password: set a new password (opened via emailed link) -->
+    <div id="resetView" hidden>
+      <h3 class="modal__title">Choose a new password</h3>
+      <form class="authform" id="resetForm" novalidate>
+        <div class="form__row">
+          <label for="resetPassword">New password</label>
+          <input type="password" id="resetPassword" name="password" placeholder="At least 6 characters" autocomplete="new-password">
+          <span class="form__error" id="err-resetPassword"></span>
+        </div>
+        <div class="form__row">
+          <label for="resetPasswordConfirm">Confirm new password</label>
+          <input type="password" id="resetPasswordConfirm" name="passwordConfirm" placeholder="Re-enter password" autocomplete="new-password">
+          <span class="form__error" id="err-resetPasswordConfirm"></span>
+        </div>
+        <button type="submit" class="btn btn--gold btn--wide">Update Password</button>
+      </form>
+      <p class="modal__note" id="resetNote" role="status" aria-live="polite"></p>
     </div>
 
     <!-- Logged-in view -->

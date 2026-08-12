@@ -7,8 +7,8 @@ const WHATSAPP_NUMBER = "447823590526";
 
 // ---- Supabase config ----
 // Fill these in from your Supabase project: Settings -> API
-const SUPABASE_URL = "https://wxjeaqczctoyflwdxime.supabase.co"; // e.g. https://xxxxxxxx.supabase.co
-const SUPABASE_ANON_KEY = "sb_publishable_ewMHUtcn6zBRc2QW-rzleQ_SaT0_LI_"; // the "anon public" key, safe for browser use
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // the "anon public" key, safe for browser use
 
 let supabaseClient = null;
 if (
@@ -44,6 +44,32 @@ const signupForm = document.getElementById("signupForm");
 const authNote = document.getElementById("authNote");
 const authTitle = document.getElementById("authTitle");
 
+const forgotView = document.getElementById("forgotView");
+const forgotForm = document.getElementById("forgotForm");
+const forgotNote = document.getElementById("forgotNote");
+const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+const backToLoginLink = document.getElementById("backToLoginLink");
+
+const resetView = document.getElementById("resetView");
+const resetForm = document.getElementById("resetForm");
+const resetNote = document.getElementById("resetNote");
+
+// Single place that controls which of the modal's five views is visible:
+// login, signup, forgot (request reset email), reset (set new password), account.
+function showAuthState(state) {
+  authView.hidden = !(state === "login" || state === "signup");
+  forgotView.hidden = state !== "forgot";
+  resetView.hidden = state !== "reset";
+  accountView.hidden = state !== "account";
+  if (state === "login" || state === "signup") {
+    authTabs.forEach((t) => t.classList.toggle("is-active", t.dataset.tab === state));
+    loginForm.hidden = state !== "login";
+    signupForm.hidden = state !== "signup";
+    authTitle.textContent = state === "login" ? "Welcome back" : "Create your account";
+    authNote.textContent = "";
+  }
+}
+
 function openAuthModal() {
   authModal.classList.add("is-open");
   authModal.setAttribute("aria-hidden", "false");
@@ -64,11 +90,9 @@ if (accountBtn) accountBtn.addEventListener("click", async () => {
   const { data } = await supabaseClient.auth.getSession();
   if (data.session) {
     accountEmail.textContent = data.session.user.email;
-    authView.hidden = true;
-    accountView.hidden = false;
+    showAuthState("account");
   } else {
-    authView.hidden = false;
-    accountView.hidden = true;
+    showAuthState("login");
   }
   openAuthModal();
 });
@@ -87,13 +111,7 @@ document.addEventListener("keydown", (e) => {
 
 authTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
-    authTabs.forEach((t) => t.classList.remove("is-active"));
-    tab.classList.add("is-active");
-    const isLogin = tab.dataset.tab === "login";
-    loginForm.hidden = !isLogin;
-    signupForm.hidden = isLogin;
-    authTitle.textContent = isLogin ? "Welcome back" : "Create your account";
-    authNote.textContent = "";
+    showAuthState(tab.dataset.tab);
     // Clear any validation state left over from the other form
     [loginFields, signupFields].forEach((group) => {
       Object.values(group).forEach((f) => {
@@ -102,6 +120,14 @@ authTabs.forEach((tab) => {
       });
     });
   });
+});
+
+forgotPasswordLink.addEventListener("click", () => {
+  showAuthState("forgot");
+  forgotNote.textContent = "";
+});
+backToLoginLink.addEventListener("click", () => {
+  showAuthState("login");
 });
 
 // ---- Field-level validation (mirrors the enquiry form's pattern) ----
@@ -235,8 +261,7 @@ loginForm.addEventListener("submit", async (e) => {
   authNote.style.color = "";
   authNote.textContent = "";
   accountEmail.textContent = data.user.email;
-  authView.hidden = true;
-  accountView.hidden = false;
+  showAuthState("account");
   loginForm.reset();
 });
 
@@ -288,8 +313,7 @@ signupForm.addEventListener("submit", async (e) => {
   }
   authNote.textContent = "";
   accountEmail.textContent = data.user.email;
-  authView.hidden = true;
-  accountView.hidden = false;
+  showAuthState("account");
   signupForm.reset();
 });
 
@@ -299,8 +323,121 @@ logoutBtn.addEventListener("click", async () => {
   closeAuthModal();
 });
 
-// Keep the nav button label in sync with the current session,
-// and react instantly to login/signup/logout anywhere on the page.
+// ---- Forgot password: send reset email ----
+const forgotFields = {
+  forgotEmail: {
+    input: document.getElementById("forgotEmail"),
+    error: document.getElementById("err-forgotEmail"),
+    validate: validateEmailValue,
+  },
+};
+Object.keys(forgotFields).forEach((key) => {
+  const field = forgotFields[key];
+  field.input.addEventListener("blur", () => validateAuthField(forgotFields, key));
+  field.input.addEventListener("input", () => {
+    if (field.input.classList.contains("is-invalid")) validateAuthField(forgotFields, key);
+  });
+});
+
+forgotForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const valid = validateAuthField(forgotFields, "forgotEmail");
+  if (!valid) {
+    forgotNote.style.color = "#E08A8A";
+    forgotNote.textContent = "Please fix the email above.";
+    return;
+  }
+  if (!supabaseClient) {
+    forgotNote.style.color = "#E08A8A";
+    forgotNote.textContent = "Auth isn't set up yet — add your Supabase keys in script.js.";
+    return;
+  }
+  const email = document.getElementById("forgotEmail").value.trim();
+  const btn = forgotForm.querySelector("button[type=submit]");
+  btn.disabled = true;
+  forgotNote.style.color = "";
+  forgotNote.textContent = "Sending reset link...";
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  btn.disabled = false;
+  if (error) {
+    forgotNote.style.color = "#E08A8A";
+    forgotNote.textContent = error.message;
+    return;
+  }
+  // Supabase doesn't reveal whether the email exists (avoids account
+  // enumeration) — this message is accurate either way.
+  forgotNote.style.color = "";
+  forgotNote.textContent = "If that email has an account, a reset link is on its way.";
+  forgotForm.reset();
+});
+
+// ---- Reset password: set new password (arrives via the emailed link) ----
+const resetFields = {
+  resetPassword: {
+    input: document.getElementById("resetPassword"),
+    error: document.getElementById("err-resetPassword"),
+    validate(value) {
+      if (!value) return "Please enter a new password.";
+      if (value.length < 6) return "Use at least 6 characters.";
+      return "";
+    },
+  },
+  resetPasswordConfirm: {
+    input: document.getElementById("resetPasswordConfirm"),
+    error: document.getElementById("err-resetPasswordConfirm"),
+    validate(value) {
+      if (!value) return "Please confirm your new password.";
+      if (value !== document.getElementById("resetPassword").value) return "Passwords don't match.";
+      return "";
+    },
+  },
+};
+Object.keys(resetFields).forEach((key) => {
+  const field = resetFields[key];
+  field.input.addEventListener("blur", () => validateAuthField(resetFields, key));
+  field.input.addEventListener("input", () => {
+    if (field.input.classList.contains("is-invalid")) validateAuthField(resetFields, key);
+  });
+});
+
+resetForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const results = Object.keys(resetFields).map((key) => validateAuthField(resetFields, key));
+  if (!results.every(Boolean)) {
+    resetNote.style.color = "#E08A8A";
+    resetNote.textContent = "Please fix the fields marked in red.";
+    return;
+  }
+  if (!supabaseClient) return;
+  const password = document.getElementById("resetPassword").value;
+  const btn = resetForm.querySelector("button");
+  btn.disabled = true;
+  resetNote.style.color = "";
+  resetNote.textContent = "Updating password...";
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  btn.disabled = false;
+  if (error) {
+    resetNote.style.color = "#E08A8A";
+    resetNote.textContent = error.message;
+    return;
+  }
+  resetNote.style.color = "";
+  resetNote.textContent = "Password updated. You're all set.";
+  resetForm.reset();
+  // Clear the recovery token out of the URL and drop them into their account view.
+  history.replaceState(null, "", window.location.pathname);
+  setTimeout(async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) accountEmail.textContent = data.session.user.email;
+    showAuthState("account");
+  }, 1200);
+});
+
+// Keep the nav button label in sync with the current session, react to
+// login/signup/logout anywhere on the page, and catch the moment a visitor
+// arrives via a password-reset email link.
 async function refreshAccountUI() {
   if (!supabaseClient) return;
   const { data } = await supabaseClient.auth.getSession();
@@ -310,7 +447,13 @@ async function refreshAccountUI() {
 }
 if (supabaseClient) {
   refreshAccountUI();
-  supabaseClient.auth.onAuthStateChange(() => refreshAccountUI());
+  supabaseClient.auth.onAuthStateChange((event) => {
+    refreshAccountUI();
+    if (event === "PASSWORD_RECOVERY") {
+      showAuthState("reset");
+      openAuthModal();
+    }
+  });
 }
 
 // ---- Footer year ----

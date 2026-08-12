@@ -108,6 +108,27 @@ logged-in user later, add a `user_id uuid references auth.users` column to
 the `enquiries` table and set it from `supabaseClient.auth.getUser()` when
 saving.
 
+### Forgot / reset password
+
+The Log In form has a "Forgot password?" link. The flow:
+
+1. Visitor enters their email → Supabase emails them a reset link (uses the
+   same default email sending as signup confirmation — no extra setup).
+2. Clicking that link brings them back to your site with a special token in
+   the URL. The site detects this automatically (via Supabase's
+   `PASSWORD_RECOVERY` event) and opens the modal straight to a "Choose a new
+   password" screen — no page or link of your own to build.
+3. They set a new password, and they're logged in.
+
+This uses the **same Site URL / Redirect URLs** you already set up in
+Supabase's Authentication → URL Configuration for signup confirmation — no
+additional configuration needed there.
+
+Note: neither you nor Supabase can ever see a user's actual password —
+only a one-way hash is stored. Password reset (via emailed link) is the
+correct way to help a user who's locked out; there's no "look up their
+password" option, by design.
+
 ### Viewing your leads
 
 Supabase's **Table Editor** works fine for occasional checking. If you want
