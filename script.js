@@ -107,16 +107,46 @@ authTabs.forEach((tab) => {
 // ---- Field-level validation (mirrors the enquiry form's pattern) ----
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Catches common domain typos (e.g. "gmail.comm", "gmial.com") that pass
+// basic email regex but are almost certainly mistakes.
+const KNOWN_DOMAINS = [
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+  "icloud.com", "rediffmail.com", "protonmail.com", "live.com",
+];
+function levenshtein(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+function suggestedDomain(domain) {
+  const d = domain.toLowerCase();
+  for (const known of KNOWN_DOMAINS) {
+    if (d !== known && levenshtein(d, known) <= 1) return known;
+  }
+  return null;
+}
+function validateEmailValue(value) {
+  const v = value.trim();
+  if (!v) return "Please enter your email.";
+  if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
+  const domain = v.split("@")[1] || "";
+  const suggestion = suggestedDomain(domain);
+  if (suggestion) return `Check your email — did you mean @${suggestion}?`;
+  return "";
+}
+
 const loginFields = {
   loginEmail: {
     input: document.getElementById("loginEmail"),
     error: document.getElementById("err-loginEmail"),
-    validate(value) {
-      const v = value.trim();
-      if (!v) return "Please enter your email.";
-      if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
-      return "";
-    },
+    validate: validateEmailValue,
   },
   loginPassword: {
     input: document.getElementById("loginPassword"),
@@ -143,12 +173,7 @@ const signupFields = {
   signupEmail: {
     input: document.getElementById("signupEmail"),
     error: document.getElementById("err-signupEmail"),
-    validate(value) {
-      const v = value.trim();
-      if (!v) return "Please enter your email.";
-      if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
-      return "";
-    },
+    validate: validateEmailValue,
   },
   signupPassword: {
     input: document.getElementById("signupPassword"),
@@ -187,7 +212,11 @@ loginForm.addEventListener("submit", async (e) => {
     authNote.textContent = "Please fix the fields marked in red.";
     return;
   }
-  if (!supabaseClient) return;
+  if (!supabaseClient) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = "Login isn't set up yet — add your Supabase keys in script.js.";
+    return;
+  }
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
   const btn = loginForm.querySelector("button");
@@ -219,7 +248,11 @@ signupForm.addEventListener("submit", async (e) => {
     authNote.textContent = "Please fix the fields marked in red.";
     return;
   }
-  if (!supabaseClient) return;
+  if (!supabaseClient) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = "Sign up isn't set up yet — add your Supabase keys in script.js.";
+    return;
+  }
   const fullName = document.getElementById("signupName").value.trim();
   const email = document.getElementById("signupEmail").value.trim();
   const password = document.getElementById("signupPassword").value;
