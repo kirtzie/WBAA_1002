@@ -7,8 +7,8 @@ const WHATSAPP_NUMBER = "447823590526";
 
 // ---- Supabase config ----
 // Fill these in from your Supabase project: Settings -> API
-const SUPABASE_URL = "https://wxjeaqczctoyflwdxime.supabase.co"; // e.g. https://xxxxxxxx.supabase.co
-const SUPABASE_ANON_KEY = "sb_publishable_ewMHUtcn6zBRc2QW-rzleQ_SaT0_LI_"; // the "anon public" key, safe for browser use
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // the "anon public" key, safe for browser use
 
 let supabaseClient = null;
 if (
@@ -94,11 +94,99 @@ authTabs.forEach((tab) => {
     signupForm.hidden = isLogin;
     authTitle.textContent = isLogin ? "Welcome back" : "Create your account";
     authNote.textContent = "";
+    // Clear any validation state left over from the other form
+    [loginFields, signupFields].forEach((group) => {
+      Object.values(group).forEach((f) => {
+        f.error.textContent = "";
+        f.input.classList.remove("is-invalid");
+      });
+    });
+  });
+});
+
+// ---- Field-level validation (mirrors the enquiry form's pattern) ----
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const loginFields = {
+  loginEmail: {
+    input: document.getElementById("loginEmail"),
+    error: document.getElementById("err-loginEmail"),
+    validate(value) {
+      const v = value.trim();
+      if (!v) return "Please enter your email.";
+      if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
+      return "";
+    },
+  },
+  loginPassword: {
+    input: document.getElementById("loginPassword"),
+    error: document.getElementById("err-loginPassword"),
+    validate(value) {
+      if (!value) return "Please enter your password.";
+      return "";
+    },
+  },
+};
+
+const signupFields = {
+  signupName: {
+    input: document.getElementById("signupName"),
+    error: document.getElementById("err-signupName"),
+    validate(value) {
+      const v = value.trim();
+      if (!v) return "Please enter your name.";
+      if (v.length < 2) return "Name looks too short.";
+      if (!/^[a-zA-Z\s.'-]+$/.test(v)) return "Please use letters only.";
+      return "";
+    },
+  },
+  signupEmail: {
+    input: document.getElementById("signupEmail"),
+    error: document.getElementById("err-signupEmail"),
+    validate(value) {
+      const v = value.trim();
+      if (!v) return "Please enter your email.";
+      if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
+      return "";
+    },
+  },
+  signupPassword: {
+    input: document.getElementById("signupPassword"),
+    error: document.getElementById("err-signupPassword"),
+    validate(value) {
+      if (!value) return "Please create a password.";
+      if (value.length < 6) return "Use at least 6 characters.";
+      return "";
+    },
+  },
+};
+
+function validateAuthField(group, key) {
+  const field = group[key];
+  const message = field.validate(field.input.value);
+  field.error.textContent = message;
+  field.input.classList.toggle("is-invalid", Boolean(message));
+  return !message;
+}
+
+[loginFields, signupFields].forEach((group) => {
+  Object.keys(group).forEach((key) => {
+    const field = group[key];
+    field.input.addEventListener("blur", () => validateAuthField(group, key));
+    field.input.addEventListener("input", () => {
+      if (field.input.classList.contains("is-invalid")) validateAuthField(group, key);
+    });
   });
 });
 
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const results = Object.keys(loginFields).map((key) => validateAuthField(loginFields, key));
+  if (!results.every(Boolean)) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = "Please fix the fields marked in red.";
+    return;
+  }
   if (!supabaseClient) return;
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
@@ -110,7 +198,9 @@ loginForm.addEventListener("submit", async (e) => {
   btn.disabled = false;
   if (error) {
     authNote.style.color = "#E08A8A";
-    authNote.textContent = error.message;
+    authNote.textContent = error.message === "Invalid login credentials"
+      ? "Incorrect email or password."
+      : error.message;
     return;
   }
   authNote.style.color = "";
@@ -123,6 +213,12 @@ loginForm.addEventListener("submit", async (e) => {
 
 signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const results = Object.keys(signupFields).map((key) => validateAuthField(signupFields, key));
+  if (!results.every(Boolean)) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = "Please fix the fields marked in red.";
+    return;
+  }
   if (!supabaseClient) return;
   const fullName = document.getElementById("signupName").value.trim();
   const email = document.getElementById("signupEmail").value.trim();
@@ -140,6 +236,14 @@ signupForm.addEventListener("submit", async (e) => {
   if (error) {
     authNote.style.color = "#E08A8A";
     authNote.textContent = error.message;
+    return;
+  }
+  // Supabase returns a "user" with an empty identities[] array (no error)
+  // when the email is already registered — this is how it avoids leaking
+  // which emails exist. Catch that case and point them to Log In instead.
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = "This email is already registered — try logging in instead.";
     return;
   }
   // If email confirmation is ON in Supabase, there's no session yet.

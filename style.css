@@ -836,6 +836,7 @@ img, svg { display: block; max-width: 100%; }
 }
 
 .authform { display: flex; flex-direction: column; gap: 18px; }
+.authform[hidden] { display: none; }
 .authform .form__row { display: flex; flex-direction: column; gap: 8px; }
 .authform label {
   font-size: 12px;
