@@ -80,6 +80,34 @@ lost anymore even if step 2 is skipped, because step 1 already saved it.
 If you leave the placeholders in place, the site quietly skips the database
 save and just does the WhatsApp handoff like before — nothing breaks.
 
+### Set up Login / Sign Up (Supabase Auth)
+
+The site now has a Log In / Sign Up modal (button in the top nav) built on
+**Supabase Auth** — no separate database table needed for passwords;
+Supabase stores and hashes them securely on its own.
+
+1. This uses the same Supabase project as the enquiry form — if you already
+   did the "Set up Supabase" steps above and pasted `SUPABASE_URL` and
+   `SUPABASE_ANON_KEY` into `script.js`, login/signup work automatically.
+2. In your Supabase project, go to **Authentication → Providers** and
+   confirm **Email** is enabled (it is by default).
+3. Go to **Authentication → Settings** and decide on **"Confirm email"**:
+   - **ON** (default, recommended for a real site): new users get a
+     confirmation email and can't log in until they click it. The site
+     already handles this — it tells the user to check their email after
+     signup.
+   - **OFF** (fine for a quick demo): new users are logged in immediately
+     after signing up, no email step.
+4. That's it — no extra table, no extra keys. New users appear under
+   **Authentication → Users** in the Supabase dashboard.
+
+Signed-up users aren't linked to the enquiries table by default — they're
+just accounts for now (e.g. so future features like "my orders" or "saved
+measurements" have someone to belong to). If you want enquiries tied to a
+logged-in user later, add a `user_id uuid references auth.users` column to
+the `enquiries` table and set it from `supabaseClient.auth.getUser()` when
+saving.
+
 ### Viewing your leads
 
 Supabase's **Table Editor** works fine for occasional checking. If you want

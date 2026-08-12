@@ -27,6 +27,10 @@
     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12c0 1.984.583 3.834 1.588 5.386L2 22l4.744-1.564A9.953 9.953 0 0 0 12.004 22C17.53 22 22 17.523 22 12S17.53 2 12.004 2zm0 18.222a8.19 8.19 0 0 1-4.183-1.145l-.3-.178-2.816.929.938-2.75-.196-.316A8.174 8.174 0 0 1 3.8 12c0-4.53 3.677-8.222 8.204-8.222 4.527 0 8.204 3.692 8.204 8.222 0 4.53-3.677 8.222-8.204 8.222z"/></svg>
     <span>WhatsApp</span>
   </a>
+  <button class="nav__account" id="accountBtn" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c1.4-3.8 4.3-5.8 7.5-5.8s6.1 2 7.5 5.8"/></svg>
+    <span id="accountBtnLabel">Log In</span>
+  </button>
   <button class="nav__burger" id="burger" aria-label="Open menu">
     <span></span><span></span>
   </button>
@@ -38,6 +42,7 @@
   <a href="#visit">Visit</a>
   <a href="#enquire">Enquire</a>
   <a href="https://wa.me/447823590526" target="_blank" rel="noopener">Chat on WhatsApp</a>
+  <a href="#" id="accountBtnMobile">Log In</a>
 </div>
 
 <!-- ===== HERO ===== -->
@@ -241,6 +246,60 @@
   </div>
   <p class="footer__bottom">© <span id="year"></span> VASTRA Atelier, Model Town, Rohtak. All pieces made to order.</p>
 </footer>
+
+<!-- ===== AUTH MODAL ===== -->
+<div class="modal" id="authModal" aria-hidden="true">
+  <div class="modal__backdrop" id="authBackdrop"></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="modal__close" id="authClose" type="button" aria-label="Close">×</button>
+
+    <!-- Logged-out view -->
+    <div id="authView">
+      <div class="modal__tabs">
+        <button class="modal__tab is-active" data-tab="login" type="button">Log In</button>
+        <button class="modal__tab" data-tab="signup" type="button">Sign Up</button>
+      </div>
+      <h3 class="modal__title" id="authTitle">Welcome back</h3>
+
+      <form class="authform" id="loginForm">
+        <div class="form__row">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="form__row">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" name="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn--gold btn--wide">Log In</button>
+      </form>
+
+      <form class="authform" id="signupForm" hidden>
+        <div class="form__row">
+          <label for="signupName">Full name</label>
+          <input type="text" id="signupName" name="name" placeholder="e.g. Simran Kaur" autocomplete="name" required>
+        </div>
+        <div class="form__row">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="form__row">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" name="password" placeholder="At least 6 characters" autocomplete="new-password" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn--gold btn--wide">Create Account</button>
+      </form>
+
+      <p class="modal__note" id="authNote" role="status" aria-live="polite"></p>
+    </div>
+
+    <!-- Logged-in view -->
+    <div id="accountView" hidden>
+      <h3 class="modal__title">Your account</h3>
+      <p class="modal__account-email" id="accountEmail"></p>
+      <button class="btn btn--ghost btn--wide" id="logoutBtn" type="button">Log Out</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>

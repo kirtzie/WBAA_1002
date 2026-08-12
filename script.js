@@ -7,8 +7,8 @@ const WHATSAPP_NUMBER = "447823590526";
 
 // ---- Supabase config ----
 // Fill these in from your Supabase project: Settings -> API
-const SUPABASE_URL = "https://xsbeqdlwzpieajjikljb.supabase.co"; // e.g. https://xxxxxxxx.supabase.co
-const SUPABASE_ANON_KEY = "sb_publishable_jobfp2cTJ9O9vHaN1SImnQ_bqTeVgA_"; // the "anon public" key, safe for browser use
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"; // e.g. https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // the "anon public" key, safe for browser use
 
 let supabaseClient = null;
 if (
@@ -21,6 +21,159 @@ if (
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } else {
   console.warn("Supabase not configured — enquiries will only go via WhatsApp, not saved to a database. Fill in SUPABASE_URL and SUPABASE_ANON_KEY in script.js.");
+}
+
+// ============================================
+// AUTH (Supabase) — login / signup / logout
+// ============================================
+const authModal = document.getElementById("authModal");
+const authBackdrop = document.getElementById("authBackdrop");
+const authClose = document.getElementById("authClose");
+const accountBtn = document.getElementById("accountBtn");
+const accountBtnLabel = document.getElementById("accountBtnLabel");
+const accountBtnMobile = document.getElementById("accountBtnMobile");
+
+const authView = document.getElementById("authView");
+const accountView = document.getElementById("accountView");
+const accountEmail = document.getElementById("accountEmail");
+const logoutBtn = document.getElementById("logoutBtn");
+
+const authTabs = document.querySelectorAll(".modal__tab");
+const loginForm = document.getElementById("loginForm");
+const signupForm = document.getElementById("signupForm");
+const authNote = document.getElementById("authNote");
+const authTitle = document.getElementById("authTitle");
+
+function openAuthModal() {
+  authModal.classList.add("is-open");
+  authModal.setAttribute("aria-hidden", "false");
+  authNote.textContent = "";
+}
+function closeAuthModal() {
+  authModal.classList.remove("is-open");
+  authModal.setAttribute("aria-hidden", "true");
+}
+
+if (accountBtn) accountBtn.addEventListener("click", async () => {
+  if (!supabaseClient) {
+    openAuthModal();
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = "Auth isn't set up yet — add your Supabase keys in script.js.";
+    return;
+  }
+  const { data } = await supabaseClient.auth.getSession();
+  if (data.session) {
+    accountEmail.textContent = data.session.user.email;
+    authView.hidden = true;
+    accountView.hidden = false;
+  } else {
+    authView.hidden = false;
+    accountView.hidden = true;
+  }
+  openAuthModal();
+});
+if (accountBtnMobile) accountBtnMobile.addEventListener("click", (e) => {
+  e.preventDefault();
+  burger.classList.remove("is-open");
+  mobileMenu.classList.remove("is-open");
+  accountBtn.click();
+});
+
+authBackdrop.addEventListener("click", closeAuthModal);
+authClose.addEventListener("click", closeAuthModal);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && authModal.classList.contains("is-open")) closeAuthModal();
+});
+
+authTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    authTabs.forEach((t) => t.classList.remove("is-active"));
+    tab.classList.add("is-active");
+    const isLogin = tab.dataset.tab === "login";
+    loginForm.hidden = !isLogin;
+    signupForm.hidden = isLogin;
+    authTitle.textContent = isLogin ? "Welcome back" : "Create your account";
+    authNote.textContent = "";
+  });
+});
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabaseClient) return;
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const btn = loginForm.querySelector("button");
+  btn.disabled = true;
+  authNote.style.color = "";
+  authNote.textContent = "Logging in...";
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  btn.disabled = false;
+  if (error) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = error.message;
+    return;
+  }
+  authNote.style.color = "";
+  authNote.textContent = "";
+  accountEmail.textContent = data.user.email;
+  authView.hidden = true;
+  accountView.hidden = false;
+  loginForm.reset();
+});
+
+signupForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabaseClient) return;
+  const fullName = document.getElementById("signupName").value.trim();
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const btn = signupForm.querySelector("button");
+  btn.disabled = true;
+  authNote.style.color = "";
+  authNote.textContent = "Creating your account...";
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } },
+  });
+  btn.disabled = false;
+  if (error) {
+    authNote.style.color = "#E08A8A";
+    authNote.textContent = error.message;
+    return;
+  }
+  // If email confirmation is ON in Supabase, there's no session yet.
+  if (!data.session) {
+    authNote.style.color = "";
+    authNote.textContent = "Check your email to confirm your account, then log in.";
+    signupForm.reset();
+    return;
+  }
+  authNote.textContent = "";
+  accountEmail.textContent = data.user.email;
+  authView.hidden = true;
+  accountView.hidden = false;
+  signupForm.reset();
+});
+
+logoutBtn.addEventListener("click", async () => {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  closeAuthModal();
+});
+
+// Keep the nav button label in sync with the current session,
+// and react instantly to login/signup/logout anywhere on the page.
+async function refreshAccountUI() {
+  if (!supabaseClient) return;
+  const { data } = await supabaseClient.auth.getSession();
+  const label = data.session ? data.session.user.email.split("@")[0] : "Log In";
+  if (accountBtnLabel) accountBtnLabel.textContent = label;
+  if (accountBtnMobile) accountBtnMobile.textContent = data.session ? label : "Log In";
+}
+if (supabaseClient) {
+  refreshAccountUI();
+  supabaseClient.auth.onAuthStateChange(() => refreshAccountUI());
 }
 
 // ---- Footer year ----
